@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Notepad</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="desktop">
+      <section class="notepad-window" aria-label="Windows 10 style notepad window">
+        <header class="title-bar">
+          <div class="title-left">
+            <span class="notepad-icon" aria-hidden="true">🗒️</span>
+            <h1 id="window-title">Untitled - Notepad</h1>
+          </div>
+          <div class="window-controls" aria-hidden="true">
+            <button type="button" class="control">—</button>
+            <button type="button" class="control">▢</button>
+            <button type="button" class="control close">✕</button>
+          </div>
+        </header>
+
+        <nav class="menu-bar" aria-label="Menu">
+          <div class="menu-item"><button type="button" class="menu-trigger" data-menu="file">File</button><ul class="dropdown-menu" role="menu"><li data-action="new">New</li><li data-action="open">Open...</li><li data-action="save">Save</li><li data-action="save-as">Save As...</li><li class="separator"></li><li data-action="new-window">New Window</li><li data-action="page-setup">Page Setup...</li><li data-action="print">Print...</li><li class="separator"></li><li data-action="exit">Exit</li></ul></div>
+          <div class="menu-item"><button type="button" class="menu-trigger" data-menu="edit">Edit</button><ul class="dropdown-menu" role="menu"><li data-action="undo">Undo</li><li data-action="redo">Redo</li><li class="separator"></li><li data-action="cut">Cut</li><li data-action="copy">Copy</li><li data-action="paste">Paste</li><li data-action="delete">Delete</li><li data-action="find">Find...</li><li data-action="find-next">Find Next</li><li data-action="replace">Replace...</li><li data-action="go-to">Go To...</li><li class="separator"></li><li data-action="select-all">Select All</li><li data-action="time-date">Time/Date</li></ul></div>
+          <div class="menu-item"><button type="button" class="menu-trigger" data-menu="format">Format</button><ul class="dropdown-menu" role="menu"><li data-action="word-wrap">Word Wrap <span id="word-wrap-state">✓</span></li><li data-action="font-size-up">Font Size +</li><li data-action="font-size-down">Font Size -</li><li data-action="font-reset">Restore Default Font</li><li data-action="font-menu">Font Menu...</li></ul></div>
+          <div class="menu-item"><button type="button" class="menu-trigger" data-menu="view">View</button><ul class="dropdown-menu" role="menu"><li data-action="zoom-in">Zoom In</li><li data-action="zoom-out">Zoom Out</li><li data-action="zoom-reset">Restore Default Zoom</li><li class="separator"></li><li data-action="status-bar">Status Bar <span id="status-bar-state">✓</span></li><li data-action="toggle-dark-mode">Dark Mode <span id="dark-mode-state"></span></li></ul></div>
+          <div class="menu-item"><button type="button" class="menu-trigger" data-menu="help">Help</button><ul class="dropdown-menu" role="menu"><li data-action="view-help">View Help</li><li data-action="keyboard-shortcuts">Keyboard Shortcuts</li><li data-action="updates">Updates</li><li data-action="about">About Notepad</li></ul></div>
+        </nav>
+
+        <div class="editor-wrap">
+          <label class="sr-only" for="editor">Notepad text editor</label>
+          <textarea id="editor" spellcheck="false" autofocus>Windows 10 styled notepad.
+
+Type your notes here...</textarea>
+          <button id="mobile-context-trigger" class="mobile-context-trigger" type="button" aria-label="Open context menu">⋮</button>
+        </div>
+
+        <footer class="status-bar" id="status-bar"><span id="line-col">Ln 1, Col 1</span><span id="encoding">UTF-8</span><span id="zoom">100%</span><span id="eol">Windows (CRLF)</span></footer>
+      </section>
+    </main>
+
+    <section id="font-dialog" class="font-dialog hidden" aria-label="Font menu dialog">
+      <div class="font-panel">
+        <header><h2>Font Menu</h2><button id="font-close" type="button">✕</button></header>
+        <input id="font-search" type="search" placeholder="Search fonts..." aria-label="Search fonts" />
+        <div id="font-list" class="font-list" role="listbox" aria-label="Available fonts"></div>
+      </div>
+    </section>
+
+    <ul id="context-menu" class="context-menu hidden" role="menu" aria-label="Editor context menu">
+      <li data-action="undo">Undo</li>
+      <li data-action="redo">Redo</li>
+      <li class="separator"></li>
+      <li data-action="cut">Cut</li>
+      <li data-action="copy">Copy</li>
+      <li data-action="paste">Paste</li>
+      <li data-action="delete">Delete</li>
+      <li class="separator"></li>
+      <li data-action="select-all">Select All</li>
+      <li data-action="time-date">Time/Date</li>
+      <li data-action="font-menu">Font Menu...</li>
+    </ul>
+
+    <input class="sr-only" type="file" id="file-input" accept=".txt,text/plain" />
+    <script src="script.js"></script>
+  </body>
+</html>
