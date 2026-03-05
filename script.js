@@ -11,6 +11,10 @@ const fontDialog = document.getElementById("font-dialog");
 const fontSearch = document.getElementById("font-search");
 const fontList = document.getElementById("font-list");
 const fontClose = document.getElementById("font-close");
+const infoDialog = document.getElementById("info-dialog");
+const infoTitle = document.getElementById("info-title");
+const infoBody = document.getElementById("info-body");
+const infoClose = document.getElementById("info-close");
 const contextMenu = document.getElementById("context-menu");
 const mobileContextTrigger = document.getElementById("mobile-context-trigger");
 
@@ -21,7 +25,7 @@ const fontOptions = [
   "Menlo", "Fira Code", "JetBrains Mono", "Roboto", "Open Sans", "Lato", "Montserrat", "Poppins",
   "Source Sans Pro", "Inter", "Nunito", "Ubuntu", "PT Sans", "Merriweather", "Inconsolata", "IBM Plex Mono",
   "Noto Sans", "Noto Serif", "Aptos", "Baskerville", "Didot", "Optima", "Helvetica", "Helvetica Neue",
-  "Gill Sans", "Rockwell", "Bodoni MT", "Copperplate", "Cascadia Code", "Anonymous Pro", "Space Mono"
+  "Gill Sans", "Rockwell", "Bodoni MT", "Copperplate", "Cascadia Code", "Anonymous Pro", "Space Mono",
 ];
 
 let zoomLevel = 100;
@@ -31,13 +35,33 @@ let lastSearchTerm = "";
 let activeFont = "Consolas";
 let touchTimer;
 
-function updateTitle() { windowTitle.textContent = `${currentFileName} - Notepad`; }
+function updateTitle() {
+  windowTitle.textContent = `${currentFileName} - Notepad`;
+}
+
 function updateCursorInfo() {
   const lines = editor.value.slice(0, editor.selectionStart).split("\n");
   lineCol.textContent = `Ln ${lines.length}, Col ${lines[lines.length - 1].length + 1}`;
 }
-function closeMenus() { document.querySelectorAll(".menu-item.open").forEach((i) => i.classList.remove("open")); }
-function closeContextMenu() { contextMenu.classList.add("hidden"); }
+
+function closeMenus() {
+  document.querySelectorAll(".menu-item.open").forEach((item) => item.classList.remove("open"));
+}
+
+function closeContextMenu() {
+  contextMenu.classList.add("hidden");
+}
+
+function openInfoDialog(title, lines) {
+  infoTitle.textContent = title;
+  infoBody.textContent = lines.join("\n");
+  infoDialog.classList.remove("hidden");
+  infoClose.focus();
+}
+
+function closeInfoDialog() {
+  infoDialog.classList.add("hidden");
+}
 
 function downloadText(filename, text) {
   const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
@@ -72,21 +96,24 @@ function setFontFamily(name) {
 }
 
 function renderFontList(filterText = "") {
-  const filtered = fontOptions.filter((f) => f.toLowerCase().includes(filterText.trim().toLowerCase()));
+  const query = filterText.trim().toLowerCase();
+  const filtered = fontOptions.filter((font) => font.toLowerCase().includes(query));
   fontList.innerHTML = "";
+
   filtered.forEach((font) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = `font-option${font === activeFont ? " active" : ""}`;
-    btn.style.fontFamily = `"${font}", sans-serif`;
-    btn.textContent = font;
-    btn.addEventListener("click", () => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `font-option${font === activeFont ? " active" : ""}`;
+    button.style.fontFamily = `"${font}", sans-serif`;
+    button.textContent = font;
+    button.addEventListener("click", () => {
       setFontFamily(font);
       closeFontMenu();
       editor.focus();
     });
-    fontList.append(btn);
+    fontList.append(button);
   });
+
   if (!filtered.length) {
     const none = document.createElement("div");
     none.className = "font-option";
@@ -101,7 +128,10 @@ function openFontMenu() {
   fontDialog.classList.remove("hidden");
   fontSearch.focus();
 }
-function closeFontMenu() { fontDialog.classList.add("hidden"); }
+
+function closeFontMenu() {
+  fontDialog.classList.add("hidden");
+}
 
 function performAction(action) {
   switch (action) {
@@ -113,9 +143,19 @@ function performAction(action) {
       updateTitle();
       updateCursorInfo();
       break;
-    case "new-window": window.open(window.location.href, "_blank"); break;
-    case "open": fileInput.click(); break;
-    case "save": if (!hasSaved || currentFileName === "Untitled") return performAction("save-as"); downloadText(`${currentFileName}.txt`, editor.value); break;
+    case "new-window":
+      window.open(window.location.href, "_blank");
+      break;
+    case "open":
+      fileInput.click();
+      break;
+    case "save":
+      if (!hasSaved || currentFileName === "Untitled") {
+        performAction("save-as");
+        return;
+      }
+      downloadText(`${currentFileName}.txt`, editor.value);
+      break;
     case "save-as": {
       const requested = prompt("Save file as:", currentFileName);
       if (!requested) return;
@@ -125,20 +165,38 @@ function performAction(action) {
       downloadText(`${currentFileName}.txt`, editor.value);
       break;
     }
-    case "page-setup": alert("Page Setup is not supported in-browser. Use Print settings in your browser."); break;
-    case "print": window.print(); break;
-    case "exit": alert("In a browser demo, Exit cannot close the tab unless it was opened by script."); break;
-    case "undo": case "redo": case "cut": case "copy": case "paste": case "delete": document.execCommand(action); break;
+    case "page-setup":
+      openInfoDialog("Page Setup", ["Page Setup is not supported in-browser.", "Use your browser print settings."]);
+      break;
+    case "print":
+      window.print();
+      break;
+    case "exit":
+      openInfoDialog("Exit", ["In a browser demo, Exit cannot close the tab", "unless the tab was opened by script."]);
+      break;
+    case "undo":
+    case "redo":
+    case "cut":
+    case "copy":
+    case "paste":
+    case "delete":
+      document.execCommand(action);
+      break;
     case "find": {
       const term = prompt("Find:", lastSearchTerm);
       if (!term) return;
       lastSearchTerm = term;
-      if (!findNextOccurrence(term, 0)) alert(`Cannot find "${term}"`);
+      if (!findNextOccurrence(term, 0)) openInfoDialog("Find", [`Cannot find \"${term}\"`]);
       break;
     }
     case "find-next":
-      if (!lastSearchTerm) return alert("Use Find first to set a search term.");
-      if (!findNextOccurrence(lastSearchTerm, editor.selectionEnd) && !findNextOccurrence(lastSearchTerm, 0)) alert(`Cannot find "${lastSearchTerm}"`);
+      if (!lastSearchTerm) {
+        openInfoDialog("Find Next", ["Use Find first to set a search term."]);
+        return;
+      }
+      if (!findNextOccurrence(lastSearchTerm, editor.selectionEnd) && !findNextOccurrence(lastSearchTerm, 0)) {
+        openInfoDialog("Find Next", [`Cannot find \"${lastSearchTerm}\"`]);
+      }
       break;
     case "replace": {
       const findText = prompt("Find what:", lastSearchTerm);
@@ -161,23 +219,90 @@ function performAction(action) {
       updateCursorInfo();
       break;
     }
-    case "select-all": editor.select(); updateCursorInfo(); break;
-    case "time-date": editor.setRangeText(new Date().toLocaleString(), editor.selectionStart, editor.selectionEnd, "end"); updateCursorInfo(); break;
-    case "word-wrap": editor.classList.toggle("no-wrap"); wordWrapState.textContent = editor.classList.contains("no-wrap") ? "" : "✓"; break;
-    case "font-size-up": editor.style.fontSize = `${Math.min(Number.parseFloat(getComputedStyle(editor).fontSize) + 1, 40)}px`; break;
-    case "font-size-down": editor.style.fontSize = `${Math.max(Number.parseFloat(getComputedStyle(editor).fontSize) - 1, 9)}px`; break;
-    case "font-reset": editor.style.fontSize = "1rem"; setFontFamily("Consolas"); break;
-    case "font-menu": openFontMenu(); break;
-    case "zoom-in": zoomLevel = Math.min(500, zoomLevel + 10); editor.style.zoom = `${zoomLevel}%`; zoomLabel.textContent = `${zoomLevel}%`; break;
-    case "zoom-out": zoomLevel = Math.max(20, zoomLevel - 10); editor.style.zoom = `${zoomLevel}%`; zoomLabel.textContent = `${zoomLevel}%`; break;
-    case "zoom-reset": zoomLevel = 100; editor.style.zoom = "100%"; zoomLabel.textContent = "100%"; break;
-    case "status-bar": statusBar.classList.toggle("hidden"); statusBarState.textContent = statusBar.classList.contains("hidden") ? "" : "✓"; break;
-    case "toggle-dark-mode": document.body.classList.toggle("dark"); darkModeState.textContent = document.body.classList.contains("dark") ? "✓" : ""; break;
-    case "view-help": alert("Notepad Help\n\nUse File to open/save text files and Edit for basic editing commands."); break;
-    case "keyboard-shortcuts": alert("Shortcuts\nCtrl+S Save\nCtrl+F Find\nCtrl+H Replace\nRight click / long press: context menu"); break;
-    case "updates": alert("Updates\n\n- Added functional top menu actions\n- Added searchable font menu with many fonts\n- Added desktop right-click context menu\n- Added mobile long-press and menu-button context access\n- Added dark mode, zoom, and status bar toggles"); break;
-    case "about": alert("Notepad\nWindows 10 styled web clone\nVersion 1.3"); break;
-    default: break;
+    case "select-all":
+      editor.select();
+      updateCursorInfo();
+      break;
+    case "time-date":
+      editor.setRangeText(new Date().toLocaleString(), editor.selectionStart, editor.selectionEnd, "end");
+      updateCursorInfo();
+      break;
+    case "word-wrap":
+      editor.classList.toggle("no-wrap");
+      wordWrapState.textContent = editor.classList.contains("no-wrap") ? "" : "✓";
+      break;
+    case "font-size-up":
+      editor.style.fontSize = `${Math.min(Number.parseFloat(getComputedStyle(editor).fontSize) + 1, 40)}px`;
+      break;
+    case "font-size-down":
+      editor.style.fontSize = `${Math.max(Number.parseFloat(getComputedStyle(editor).fontSize) - 1, 9)}px`;
+      break;
+    case "font-reset":
+      editor.style.fontSize = "1rem";
+      setFontFamily("Consolas");
+      break;
+    case "font-menu":
+      openFontMenu();
+      break;
+    case "zoom-in":
+      zoomLevel = Math.min(500, zoomLevel + 10);
+      editor.style.zoom = `${zoomLevel}%`;
+      zoomLabel.textContent = `${zoomLevel}%`;
+      break;
+    case "zoom-out":
+      zoomLevel = Math.max(20, zoomLevel - 10);
+      editor.style.zoom = `${zoomLevel}%`;
+      zoomLabel.textContent = `${zoomLevel}%`;
+      break;
+    case "zoom-reset":
+      zoomLevel = 100;
+      editor.style.zoom = "100%";
+      zoomLabel.textContent = "100%";
+      break;
+    case "status-bar":
+      statusBar.classList.toggle("hidden");
+      statusBarState.textContent = statusBar.classList.contains("hidden") ? "" : "✓";
+      break;
+    case "toggle-dark-mode":
+      document.body.classList.toggle("dark");
+      darkModeState.textContent = document.body.classList.contains("dark") ? "✓" : "";
+      break;
+    case "view-help":
+      openInfoDialog("View Help", [
+        "Notepad Help",
+        "",
+        "Use File to open and save text files.",
+        "Use Edit for find, replace, and selection.",
+        "Use View to change zoom, status bar, and theme.",
+      ]);
+      break;
+    case "keyboard-shortcuts":
+      openInfoDialog("Keyboard Shortcuts", [
+        "Ctrl+S  Save",
+        "Ctrl+F  Find",
+        "Ctrl+H  Replace",
+        "Right click / long press: context menu",
+      ]);
+      break;
+    case "updates":
+      openInfoDialog("Updates", [
+        "- Added functional top menu actions",
+        "- Added searchable font menu with many fonts",
+        "- Added desktop right-click context menu",
+        "- Added mobile long-press and menu-button context access",
+        "- Added dark mode, zoom, and status bar toggles",
+        "- Added custom Help popups",
+      ]);
+      break;
+    case "about":
+      openInfoDialog("About Notepad", [
+        "Notepad",
+        "Windows 10 styled web clone",
+        "Version 1.4",
+      ]);
+      break;
+    default:
+      break;
   }
 }
 
@@ -221,19 +346,42 @@ mobileContextTrigger.addEventListener("click", () => showContextMenu(window.inne
 
 fontSearch.addEventListener("input", (event) => renderFontList(event.target.value));
 fontClose.addEventListener("click", closeFontMenu);
-fontDialog.addEventListener("click", (event) => { if (event.target === fontDialog) closeFontMenu(); });
+fontDialog.addEventListener("click", (event) => {
+  if (event.target === fontDialog) closeFontMenu();
+});
+
+infoClose.addEventListener("click", () => {
+  closeInfoDialog();
+  editor.focus();
+});
+
+infoDialog.addEventListener("click", (event) => {
+  if (event.target === infoDialog) {
+    closeInfoDialog();
+    editor.focus();
+  }
+});
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
     closeFontMenu();
+    closeInfoDialog();
     closeContextMenu();
     editor.focus();
   }
+
   if (!event.ctrlKey) return;
   const key = event.key.toLowerCase();
-  if (key === "s") { event.preventDefault(); performAction("save"); }
-  else if (key === "f") { event.preventDefault(); performAction("find"); }
-  else if (key === "h") { event.preventDefault(); performAction("replace"); }
+  if (key === "s") {
+    event.preventDefault();
+    performAction("save");
+  } else if (key === "f") {
+    event.preventDefault();
+    performAction("find");
+  } else if (key === "h") {
+    event.preventDefault();
+    performAction("replace");
+  }
 });
 
 fileInput.addEventListener("change", (event) => {
