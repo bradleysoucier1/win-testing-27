@@ -27,6 +27,9 @@ const authForms = document.getElementById("auth-forms");
 const authUser = document.getElementById("auth-user");
 const welcomeText = document.getElementById("welcome-text");
 
+const HOME_URL = "https://bradleysoucier1.github.io/WindowsNotes/";
+const NOTE_URL = "https://bradleysoucier1.github.io/WindowsNotes/note/?id=";
+
 let unsubscribeNotes;
 
 function setMessage(text, isError = false) {
@@ -49,7 +52,7 @@ function renderNotes(snapshot) {
     const note = docSnap.data();
     const li = document.createElement("li");
     const link = document.createElement("a");
-    link.href = `/note/?id=${docSnap.id}`;
+    link.href = `${NOTE_URL}${docSnap.id}`;
     link.textContent = note.title?.trim() || "Untitled";
     const updated = document.createElement("small");
     const date = note.updatedAt?.toDate?.() || new Date();
@@ -110,7 +113,7 @@ newNoteButton.addEventListener("click", async () => {
     updatedAt: serverTimestamp(),
   });
 
-  window.location.href = `/note/?id=${noteRef.id}`;
+  window.location.href = `${NOTE_URL}${noteRef.id}`;
 });
 
 onAuthStateChanged(auth, (user) => {

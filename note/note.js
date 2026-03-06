@@ -16,6 +16,8 @@ const bodyInput = document.getElementById("note-body");
 const saveStatus = document.getElementById("save-status");
 const deleteButton = document.getElementById("delete-note");
 
+const HOME_URL = "https://bradleysoucier1.github.io/WindowsNotes/";
+
 let noteRef;
 let saveTimer;
 
@@ -47,7 +49,7 @@ function queueSave() {
 
 onAuthStateChanged(auth, async (user) => {
   if (!user || !noteId) {
-    window.location.href = "/";
+    window.location.href = HOME_URL;
     return;
   }
 
@@ -74,5 +76,5 @@ deleteButton.addEventListener("click", async () => {
   if (!confirm("Delete this note permanently?")) return;
 
   await deleteDoc(noteRef);
-  window.location.href = "/";
+  window.location.href = HOME_URL;
 });
