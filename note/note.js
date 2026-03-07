@@ -5,6 +5,7 @@ import { deleteDoc, doc, getDoc, serverTimestamp, updateDoc } from "https://www.
 const params = new URLSearchParams(window.location.search);
 const noteId = params.get("id");
 const HOME_URL = "https://bradleysoucier1.github.io/WindowsNotes/";
+window.NOTES_HOME_URL = HOME_URL;
 
 const editor = document.getElementById("editor");
 const windowTitle = document.getElementById("window-title");
@@ -87,10 +88,7 @@ window.addEventListener("keydown", async (event) => {
 
   if (event.key.toLowerCase() === "d") {
     event.preventDefault();
-    if (!noteRef) return;
-    if (!confirm("Delete this note permanently?")) return;
-    await deleteDoc(noteRef);
-    window.location.href = HOME_URL;
+    await window.deleteCurrentNote();
   }
 
   if (event.key.toLowerCase() === "b") {
@@ -98,3 +96,14 @@ window.addEventListener("keydown", async (event) => {
     window.location.href = HOME_URL;
   }
 });
+
+
+window.deleteCurrentNote = async function deleteCurrentNote() {
+  if (!noteRef) {
+    setStatus("Note not loaded", true);
+    return;
+  }
+  if (!confirm("Delete this file permanently?")) return;
+  await deleteDoc(noteRef);
+  window.location.href = HOME_URL;
+};

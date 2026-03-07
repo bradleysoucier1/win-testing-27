@@ -213,7 +213,14 @@ function performAction(action) {
       window.print();
       break;
     case "exit":
-      openInfoDialog("Exit", ["In a browser demo, Exit cannot close the tab", "unless the tab was opened by script."]);
+      window.location.href = window.NOTES_HOME_URL || "https://bradleysoucier1.github.io/WindowsNotes/";
+      break;
+    case "delete-file":
+      if (typeof window.deleteCurrentNote === "function") {
+        window.deleteCurrentNote();
+      } else {
+        openInfoDialog("Delete File", ["Delete is only available for cloud-backed notes."]);
+      }
       break;
     case "undo":
     case "redo":
