@@ -1,0 +1,505 @@
+const editor = document.getElementById("editor");
+const lineCol = document.getElementById("line-col");
+const zoomLabel = document.getElementById("zoom");
+const statusBar = document.getElementById("status-bar");
+const statusBarState = document.getElementById("status-bar-state");
+const wordWrapState = document.getElementById("word-wrap-state");
+const darkModeState = document.getElementById("dark-mode-state");
+const windowTitle = document.getElementById("window-title");
+const fileInput = document.getElementById("file-input");
+const fontDialog = document.getElementById("font-dialog");
+const fontSearch = document.getElementById("font-search");
+const fontList = document.getElementById("font-list");
+const fontClose = document.getElementById("font-close");
+const infoDialog = document.getElementById("info-dialog");
+const infoTitle = document.getElementById("info-title");
+const infoBody = document.getElementById("info-body");
+const infoClose = document.getElementById("info-close");
+const editDialog = document.getElementById("edit-dialog");
+const editTitle = document.getElementById("edit-title");
+const editFields = document.getElementById("edit-fields");
+const editClose = document.getElementById("edit-close");
+const editCancel = document.getElementById("edit-cancel");
+const editConfirm = document.getElementById("edit-confirm");
+const contextMenu = document.getElementById("context-menu");
+const mobileContextTrigger = document.getElementById("mobile-context-trigger");
+
+const fontOptions = [
+  "Consolas", "Courier New", "Lucida Console", "Segoe UI", "Arial", "Calibri", "Cambria", "Candara",
+  "Comic Sans MS", "Georgia", "Tahoma", "Times New Roman", "Trebuchet MS", "Verdana", "Impact",
+  "Palatino Linotype", "Garamond", "Book Antiqua", "Franklin Gothic Medium", "Century Gothic", "Monaco",
+  "Menlo", "Fira Code", "JetBrains Mono", "Roboto", "Open Sans", "Lato", "Montserrat", "Poppins",
+  "Source Sans Pro", "Inter", "Nunito", "Ubuntu", "PT Sans", "Merriweather", "Inconsolata", "IBM Plex Mono",
+  "Noto Sans", "Noto Serif", "Aptos", "Baskerville", "Didot", "Optima", "Helvetica", "Helvetica Neue",
+  "Gill Sans", "Rockwell", "Bodoni MT", "Copperplate", "Cascadia Code", "Anonymous Pro", "Space Mono",
+];
+
+let zoomLevel = 100;
+let hasSaved = false;
+let currentFileName = "Untitled";
+let lastSearchTerm = "";
+let activeFont = "Consolas";
+let touchTimer;
+let editSubmitHandler = null;
+
+function updateTitle() {
+  windowTitle.textContent = `${currentFileName} - Notepad`;
+}
+
+function updateCursorInfo() {
+  const lines = editor.value.slice(0, editor.selectionStart).split("\n");
+  lineCol.textContent = `Ln ${lines.length}, Col ${lines[lines.length - 1].length + 1}`;
+}
+
+function closeMenus() {
+  document.querySelectorAll(".menu-item.open").forEach((item) => item.classList.remove("open"));
+}
+
+function closeContextMenu() {
+  contextMenu.classList.add("hidden");
+}
+
+function openInfoDialog(title, lines) {
+  infoTitle.textContent = title;
+  infoBody.textContent = lines.join("\n");
+  infoDialog.classList.remove("hidden");
+  infoClose.focus();
+}
+
+function closeInfoDialog() {
+  infoDialog.classList.add("hidden");
+}
+
+function openEditDialog(title, fields, onConfirm) {
+  editTitle.textContent = title;
+  editFields.innerHTML = "";
+
+  fields.forEach((field) => {
+    const label = document.createElement("label");
+    label.textContent = field.label;
+    const input = document.createElement("input");
+    input.type = field.type || "text";
+    input.id = field.id;
+    input.value = field.value || "";
+    input.placeholder = field.placeholder || "";
+    label.append(input);
+    editFields.append(label);
+  });
+
+  editSubmitHandler = () => {
+    const values = {};
+    fields.forEach((field) => {
+      values[field.id] = document.getElementById(field.id).value;
+    });
+    onConfirm(values);
+  };
+
+  editDialog.classList.remove("hidden");
+  const firstInput = editFields.querySelector("input");
+  if (firstInput) firstInput.focus();
+}
+
+function closeEditDialog() {
+  editDialog.classList.add("hidden");
+  editSubmitHandler = null;
+}
+
+function downloadText(filename, text) {
+  const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function showContextMenu(x, y) {
+  const width = 200;
+  const height = 300;
+  contextMenu.style.left = `${Math.min(x, window.innerWidth - width)}px`;
+  contextMenu.style.top = `${Math.min(y, window.innerHeight - height)}px`;
+  contextMenu.classList.remove("hidden");
+}
+
+function findNextOccurrence(term, fromIndex = editor.selectionEnd) {
+  const index = editor.value.toLowerCase().indexOf(term.toLowerCase(), fromIndex);
+  if (index === -1) return false;
+  editor.focus();
+  editor.setSelectionRange(index, index + term.length);
+  updateCursorInfo();
+  return true;
+}
+
+function setFontFamily(name) {
+  activeFont = name;
+  editor.style.fontFamily = `"${name}", "Segoe UI", monospace`;
+}
+
+function renderFontList(filterText = "") {
+  const query = filterText.trim().toLowerCase();
+  const filtered = fontOptions.filter((font) => font.toLowerCase().includes(query));
+  fontList.innerHTML = "";
+
+  filtered.forEach((font) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = `font-option${font === activeFont ? " active" : ""}`;
+    button.style.fontFamily = `"${font}", sans-serif`;
+    button.textContent = font;
+    button.addEventListener("click", () => {
+      setFontFamily(font);
+      closeFontMenu();
+      editor.focus();
+    });
+    fontList.append(button);
+  });
+
+  if (!filtered.length) {
+    const none = document.createElement("div");
+    none.className = "font-option";
+    none.textContent = "No fonts match your search.";
+    fontList.append(none);
+  }
+}
+
+function openFontMenu() {
+  fontSearch.value = "";
+  renderFontList();
+  fontDialog.classList.remove("hidden");
+  fontSearch.focus();
+}
+
+function closeFontMenu() {
+  fontDialog.classList.add("hidden");
+}
+
+function performAction(action) {
+  switch (action) {
+    case "new":
+      if (editor.value && !confirm("Discard current text and create a new file?")) return;
+      editor.value = "";
+      currentFileName = "Untitled";
+      hasSaved = false;
+      updateTitle();
+      updateCursorInfo();
+      break;
+    case "new-window":
+      window.open(window.location.href, "_blank");
+      break;
+    case "open":
+      fileInput.click();
+      break;
+    case "save":
+      if (!hasSaved || currentFileName === "Untitled") {
+        performAction("save-as");
+        return;
+      }
+      downloadText(`${currentFileName}.txt`, editor.value);
+      break;
+    case "save-as": {
+      const requested = prompt("Save file as:", currentFileName);
+      if (!requested) return;
+      currentFileName = requested.replace(/\.txt$/i, "") || "Untitled";
+      hasSaved = true;
+      updateTitle();
+      downloadText(`${currentFileName}.txt`, editor.value);
+      break;
+    }
+    case "page-setup":
+      openInfoDialog("Page Setup", ["Page Setup is not supported in-browser.", "Use your browser print settings."]);
+      break;
+    case "print":
+      window.print();
+      break;
+    case "exit":
+      window.location.href = window.NOTES_HOME_URL || "https://bradleysoucier1.github.io/WindowsNotes/";
+      break;
+    case "delete-file":
+      if (typeof window.deleteCurrentNote === "function") {
+        window.deleteCurrentNote();
+      } else {
+        openInfoDialog("Delete File", ["Delete is only available for cloud-backed notes."]);
+      }
+      break;
+    case "undo":
+    case "redo":
+    case "cut":
+    case "copy":
+    case "paste":
+    case "delete":
+      document.execCommand(action);
+      break;
+    case "find":
+      openEditDialog("Find", [{ id: "find-term", label: "Find what", value: lastSearchTerm }], (values) => {
+        const term = values["find-term"].trim();
+        if (!term) return;
+        lastSearchTerm = term;
+        closeEditDialog();
+        if (!findNextOccurrence(term, 0)) openInfoDialog("Find", [`Cannot find \"${term}\"`]);
+      });
+      break;
+    case "find-next":
+      if (!lastSearchTerm) {
+        openEditDialog("Find Next", [{ id: "findnext-term", label: "Find what", value: "" }], (values) => {
+          const term = values["findnext-term"].trim();
+          if (!term) return;
+          lastSearchTerm = term;
+          closeEditDialog();
+          if (!findNextOccurrence(lastSearchTerm, editor.selectionEnd) && !findNextOccurrence(lastSearchTerm, 0)) {
+            openInfoDialog("Find Next", [`Cannot find \"${lastSearchTerm}\"`]);
+          }
+        });
+        return;
+      }
+      if (!findNextOccurrence(lastSearchTerm, editor.selectionEnd) && !findNextOccurrence(lastSearchTerm, 0)) {
+        openInfoDialog("Find Next", [`Cannot find \"${lastSearchTerm}\"`]);
+      }
+      break;
+    case "replace":
+      openEditDialog(
+        "Replace",
+        [
+          { id: "replace-find", label: "Find what", value: lastSearchTerm },
+          { id: "replace-with", label: "Replace with", value: "" },
+        ],
+        (values) => {
+          const findText = values["replace-find"].trim();
+          if (!findText) return;
+          const replaceWith = values["replace-with"];
+          lastSearchTerm = findText;
+          editor.value = editor.value.replace(new RegExp(findText.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "g"), replaceWith);
+          closeEditDialog();
+          updateCursorInfo();
+        },
+      );
+      break;
+    case "go-to":
+      openEditDialog("Go To", [{ id: "goto-line", label: "Line number", type: "number", value: "1" }], (values) => {
+        const targetLine = Number.parseInt(values["goto-line"], 10);
+        if (Number.isNaN(targetLine) || targetLine < 1) return;
+        closeEditDialog();
+        const lines = editor.value.split("\n");
+        let index = 0;
+        for (let i = 0; i < Math.min(targetLine - 1, lines.length - 1); i += 1) index += lines[i].length + 1;
+        editor.focus();
+        editor.setSelectionRange(index, index);
+        updateCursorInfo();
+      });
+      break;
+    case "select-all":
+      editor.select();
+      updateCursorInfo();
+      break;
+    case "time-date":
+      editor.setRangeText(new Date().toLocaleString(), editor.selectionStart, editor.selectionEnd, "end");
+      updateCursorInfo();
+      break;
+    case "word-wrap":
+      editor.classList.toggle("no-wrap");
+      wordWrapState.textContent = editor.classList.contains("no-wrap") ? "" : "✓";
+      break;
+    case "font-size-up":
+      editor.style.fontSize = `${Math.min(Number.parseFloat(getComputedStyle(editor).fontSize) + 1, 40)}px`;
+      break;
+    case "font-size-down":
+      editor.style.fontSize = `${Math.max(Number.parseFloat(getComputedStyle(editor).fontSize) - 1, 9)}px`;
+      break;
+    case "font-reset":
+      editor.style.fontSize = "1rem";
+      setFontFamily("Consolas");
+      break;
+    case "font-menu":
+      openFontMenu();
+      break;
+    case "zoom-in":
+      zoomLevel = Math.min(500, zoomLevel + 10);
+      editor.style.zoom = `${zoomLevel}%`;
+      zoomLabel.textContent = `${zoomLevel}%`;
+      break;
+    case "zoom-out":
+      zoomLevel = Math.max(20, zoomLevel - 10);
+      editor.style.zoom = `${zoomLevel}%`;
+      zoomLabel.textContent = `${zoomLevel}%`;
+      break;
+    case "zoom-reset":
+      zoomLevel = 100;
+      editor.style.zoom = "100%";
+      zoomLabel.textContent = "100%";
+      break;
+    case "status-bar":
+      statusBar.classList.toggle("hidden");
+      statusBarState.textContent = statusBar.classList.contains("hidden") ? "" : "✓";
+      break;
+    case "toggle-dark-mode":
+      document.body.classList.toggle("dark");
+      darkModeState.textContent = document.body.classList.contains("dark") ? "✓" : "";
+      break;
+    case "view-help":
+      openInfoDialog("View Help", [
+        "Notepad Help",
+        "",
+        "Use File to open and save text files.",
+        "Use Edit for find, replace, and selection.",
+        "Use View to change zoom, status bar, and theme.",
+      ]);
+      break;
+    case "keyboard-shortcuts":
+      openInfoDialog("Keyboard Shortcuts", [
+        "Ctrl+S  Save",
+        "Ctrl+F  Find",
+        "Ctrl+H  Replace",
+        "Right click / long press: context menu",
+      ]);
+      break;
+    case "updates":
+      openInfoDialog("Updates", [
+        "- Added functional top menu actions",
+        "- Added searchable font menu with many fonts",
+        "- Added desktop right-click context menu",
+        "- Added mobile long-press and menu-button context access",
+        "- Added dark mode, zoom, and status bar toggles",
+        "- Added custom Help popups",
+        "- Added custom Find / Find Next / Replace / Go To dialogs",
+      ]);
+      break;
+    case "about":
+      openInfoDialog("About Notepad", ["Notepad", "Windows 10 styled web clone", "Version 1.5"]);
+      break;
+    default:
+      break;
+  }
+}
+
+document.querySelectorAll(".menu-trigger").forEach((trigger) => {
+  trigger.addEventListener("click", (event) => {
+    const item = event.currentTarget.parentElement;
+    const isOpen = item.classList.contains("open");
+    closeMenus();
+    if (!isOpen) item.classList.add("open");
+  });
+});
+
+document.querySelectorAll(".dropdown-menu li[data-action], .context-menu li[data-action]").forEach((option) => {
+  option.addEventListener("click", (event) => {
+    performAction(event.currentTarget.dataset.action);
+    closeMenus();
+    closeContextMenu();
+    if (event.currentTarget.dataset.action !== "font-menu") editor.focus();
+  });
+});
+
+document.addEventListener("click", (event) => {
+  if (!event.target.closest(".menu-item") && !event.target.closest("#context-menu") && event.target !== mobileContextTrigger) {
+    closeMenus();
+    closeContextMenu();
+  }
+});
+
+editor.addEventListener("contextmenu", (event) => {
+  event.preventDefault();
+  showContextMenu(event.clientX, event.clientY);
+});
+
+editor.addEventListener(
+  "touchstart",
+  (event) => {
+    const touch = event.touches[0];
+    touchTimer = setTimeout(() => showContextMenu(touch.clientX, touch.clientY), 450);
+  },
+  { passive: true },
+);
+editor.addEventListener("touchend", () => clearTimeout(touchTimer));
+editor.addEventListener("touchmove", () => clearTimeout(touchTimer));
+mobileContextTrigger.addEventListener("click", () => showContextMenu(window.innerWidth - 210, window.innerHeight - 260));
+
+fontSearch.addEventListener("input", (event) => renderFontList(event.target.value));
+fontClose.addEventListener("click", closeFontMenu);
+fontDialog.addEventListener("click", (event) => {
+  if (event.target === fontDialog) closeFontMenu();
+});
+
+infoClose.addEventListener("click", () => {
+  closeInfoDialog();
+  editor.focus();
+});
+
+infoDialog.addEventListener("click", (event) => {
+  if (event.target === infoDialog) {
+    closeInfoDialog();
+    editor.focus();
+  }
+});
+
+editClose.addEventListener("click", () => {
+  closeEditDialog();
+  editor.focus();
+});
+
+editCancel.addEventListener("click", () => {
+  closeEditDialog();
+  editor.focus();
+});
+
+editConfirm.addEventListener("click", () => {
+  if (editSubmitHandler) editSubmitHandler();
+});
+
+editDialog.addEventListener("click", (event) => {
+  if (event.target === editDialog) {
+    closeEditDialog();
+    editor.focus();
+  }
+});
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") {
+    closeFontMenu();
+    closeInfoDialog();
+    closeEditDialog();
+    closeContextMenu();
+    editor.focus();
+  }
+
+  if (event.key === "Enter" && !editDialog.classList.contains("hidden") && event.target.tagName === "INPUT") {
+    event.preventDefault();
+    if (editSubmitHandler) editSubmitHandler();
+    return;
+  }
+
+  if (!event.ctrlKey) return;
+  const key = event.key.toLowerCase();
+  if (key === "s") {
+    event.preventDefault();
+    performAction("save");
+  } else if (key === "f") {
+    event.preventDefault();
+    performAction("find");
+  } else if (key === "h") {
+    event.preventDefault();
+    performAction("replace");
+  }
+});
+
+fileInput.addEventListener("change", (event) => {
+  const [file] = event.target.files;
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (readEvent) => {
+    editor.value = String(readEvent.target.result ?? "");
+    currentFileName = file.name.replace(/\.txt$/i, "") || "Untitled";
+    hasSaved = true;
+    updateTitle();
+    updateCursorInfo();
+  };
+  reader.readAsText(file);
+  fileInput.value = "";
+});
+
+editor.addEventListener("keyup", updateCursorInfo);
+editor.addEventListener("click", updateCursorInfo);
+editor.addEventListener("input", updateCursorInfo);
+
+setFontFamily("Consolas");
+updateTitle();
+updateCursorInfo();

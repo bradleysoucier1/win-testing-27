@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Windows Notes Cloud</title>
+    <link rel="stylesheet" href="home.css" />
+  </head>
+  <body>
+    <main class="page">
+      <section class="panel auth-panel">
+        <h1>Windows Notes Cloud</h1>
+        <p>Sign in to access notes from anywhere.</p>
+
+        <div id="auth-forms">
+          <button id="google-signin" class="btn primary" type="button">Sign in with Google</button>
+
+          <form id="email-auth-form" class="form-grid">
+            <input id="email" type="email" placeholder="Email" required />
+            <input id="password" type="password" placeholder="Password" required minlength="6" />
+            <div class="row">
+              <button class="btn" type="submit" data-mode="signin">Sign In</button>
+              <button class="btn" type="submit" data-mode="signup">Sign Up</button>
+            </div>
+          </form>
+        </div>
+
+        <div id="auth-user" class="hidden">
+          <p id="welcome-text"></p>
+          <button id="signout" class="btn" type="button">Sign Out</button>
+        </div>
+
+        <p id="auth-message" class="message"></p>
+      </section>
+
+      <section class="panel notes-panel">
+        <div class="row space-between">
+          <h2>Your Notes</h2>
+          <button id="new-note" class="btn primary" type="button" disabled>New Note</button>
+        </div>
+        <ul id="notes-list" class="notes-list"></ul>
+      </section>
+    </main>
+
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
